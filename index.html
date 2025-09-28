@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algobrows - Chromium Browser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Навигационная панель */
+        .nav-bar {
+            height: 60px;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            border-bottom: 1px solid #333;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .nav-controls {
+            display: flex;
+            gap: 8px;
+            margin-right: 15px;
+        }
+
+        .nav-btn {
+            background: #333;
+            border: none;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: #444;
+        }
+
+        .nav-btn:disabled {
+            background: #222;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .url-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .url-bar {
+            flex: 1;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 10px 20px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .url-bar:focus {
+            border-color: #00ff00;
+        }
+
+        .go-button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .go-button:hover {
+            background: #00cc00;
+        }
+
+        /* Домашняя страница */
+        #homePage {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 900;
+        }
+
+        .home-content {
+            text-align: center;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        .logo {
+            margin-bottom: 40px;
+        }
+
+        .logo img {
+            max-width: 400px;
+            height: auto;
+            margin-bottom: 10px;
+        }
+
+        .browser-name {
+            font-size: 24px;
+            color: #00ff00;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 18px 60px 18px 25px;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 35px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: #00ff00;
+            background: #2a2a2a;
+            box-shadow: 0 0 25px rgba(0, 255, 0, 0.2);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #00ff00;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .search-button {
+            padding: 15px 40px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .search-button:hover {
+            background: #00cc00;
+            transform: translateY(-2px);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* WebView контейнер (заполняется через BrowserView) */
+        #browserView {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Навигационная панель -->
+    <div class="nav-bar">
+        <div class="nav-controls">
+            <button class="nav-btn" id="backBtn" disabled onclick="goBack()">←</button>
+            <button class="nav-btn" id="forwardBtn" disabled onclick="goForward()">→</button>
+            <button class="nav-btn" onclick="goHome()">⟳</button>
+            <button class="nav-btn" onclick="showHomePage()">⌂</button>
+        </div>
+        
+        <div class="url-container">
+            <input type="text" class="url-bar" id="urlInput" placeholder="Введите URL или поисковый запрос...">
+            <button class="go-button" onclick="navigateToUrl()">Перейти</button>
+        </div>
+    </div>
+
+    <!-- Домашняя страница -->
+    <div id="homePage">
+        <div class="home-content">
+            <div class="logo">
+                <img src="logo.png" alt="Algobrows" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDQwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMDAwMDAwIi8+CjxwYXRoIGQ9Ik02MCAzMEg5MFY3MEg2MFYzMFpNODAgNTBWNTBINzBWNTBIODBaIiBmaWxsPSIjMDBmZjAwIi8+CjxwYXRoIGQ9Ik0xMTAgMzBIMTQwVjUwSDEzNVY3MEgxMTBWMzBaIiBmaWxsPSIjMDBmZjAwIi8+CjxwYXRoIGQ9Ik0xNjAgMzBIMTkwVjQwSDE3NVY3MEgxNjBWMzBaTTE3NSA1MEgxODBWNTBIMTc1WiIgZmlsbD0iIzAwZmYwMCIvPgo8cGF0aCBkPSJNMjEwIDMwSDI0MFY0MEgyMjVWNzBIMjEwVjMwWk0yMjUgNTBIMjQwVjUwSDIyNVoiIGZpbGw9IiMwMGZmMDAiLz4KPHBhdGggZD0iTTI2NSAzMEgzMjBWNDBIMjc1VjU1SDMxNVY2NUgyNzVWNzBIMjY1VjMwWiIgZmlsbD0iIzAwZmYwMCIvPgo8cGF0aCBkPSJNMzM1IDMwSDM2NVY0MEgzNDVWNzBIMzM1VjMwWk0zNDUgNTBIMzY1VjUwSDM0NVoiIGZpbGw9IiMwMGZmMDAiLz4KPC9zdmc+Cg=='">
+                <div class="browser-name">Algobrows - Chromium Browser</div>
+            </div>
+            
+            <div class="search-box">
+                <input type="text" class="search-input" id="searchInput" placeholder="Введите поисковый запрос...">
+                <div class="search-icon" onclick="searchWeb()">🔍</div>
+            </div>
+            
+            <button class="search-button" onclick="searchWeb()">Поиск в Algobrows</button>
+            
+            <div style="margin-top: 40px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <button class="nav-btn" onclick="quickNavigate('https://www.google.com')">Google</button>
+                <button class="nav-btn" onclick="quickNavigate('https://www.youtube.com')">YouTube</button>
+                <button class="nav-btn" onclick="quickNavigate('https://github.com')">GitHub</button>
+                <button class="nav-btn" onclick="quickNavigate('https://stackoverflow.com')">StackOverflow</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BrowserView контейнер -->
+    <div id="browserView" class="hidden"></div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        // Навигация
+        function goBack() {
+            ipcRenderer.invoke('go-back');
+        }
+
+        function goForward() {
+            ipcRenderer.invoke('go-forward');
+        }
+
+        function goHome() {
+            ipcRenderer.invoke('reload');
+        }
+
+        function showHomePage() {
+            document.getElementById('homePage').classList.remove('hidden');
+            document.getElementById('browserView').classList.add('hidden');
+        }
+
+        function navigateToUrl() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (url) {
+                let fullUrl = url;
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    // Если это не URL, делаем поиск
+                    fullUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+                }
+                ipcRenderer.invoke('navigate-to', fullUrl);
+                document.getElementById('homePage').classList.add('hidden');
+                document.getElementById('browserView').classList.remove('hidden');
+            }
+        }
+
+        function searchWeb() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (query) {
+                const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                ipcRenderer.invoke('navigate-to', searchUrl);
+                document.getElementById('homePage').classList.add('hidden');
+                document.getElementById('browserView').classList.remove('hidden');
+            }
+        }
+
+        function quickNavigate(url) {
+            ipcRenderer.invoke('navigate-to', url);
+            document.getElementById('homePage').classList.add('hidden');
+            document.getElementById('browserView').classList.remove('hidden');
+        }
+
+        // Обработчики событий
+        document.getElementById('urlInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                navigateToUrl();
+            }
+        });
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchWeb();
+            }
+        });
+
+        // Слушаем изменения URL от BrowserView
+        ipcRenderer.on('url-changed', (event, url) => {
+            document.getElementById('urlInput').value = url;
+            updateNavButtons();
+        });
+
+        // Обновляем кнопки навигации
+        async function updateNavButtons() {
+            // В реальной реализации нужно получать состояние из BrowserView
+            // Это упрощенная версия
+        }
+
+        // Показываем домашнюю страницу при загрузке
+        window.addEventListener('load', () => {
+            document.getElementById('homePage').classList.remove('hidden');
+            document.getElementById('searchInput').focus();
+        });
+    </script>
+</body>
+</html>
